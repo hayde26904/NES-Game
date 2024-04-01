@@ -82,6 +82,13 @@ int randRange(int min, int max) {
     return result;
 }
 
+void smartDelay(uint8_t interval){ //Delays the game for inverval number of frames by waiting for that frame to fully render before starting the next loop
+    uint8_t i;
+    for(i=0; i < interval; i++){
+        wait_vbl_done();
+    }
+}
+
 void create_dude(int x, int y, int xv, int yv, int id, struct dude *d)
 {
 	d->x = x;
