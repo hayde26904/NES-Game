@@ -14,8 +14,7 @@
 .segment "ZEROPAGE" ; LSB 0 - FF
 
   marioX .set $00
-  page1: .res 2
-  page2: .res 2
+  world: .res 2
 
 .segment "STARTUP"
 
@@ -88,80 +87,48 @@
     cpx #$20 ; 20 in hex is 32 in decimal. We are loading 32 bytes of palette data in this case.
     bne LoadPalettes
 
-    
-  InitWorldData:
-    ;Initialize world to point to world data
-    lda #<chunk1page1 ; < gets the lo byte
-    sta page1
-    lda #>chunk1page1 ; > gets the hi byte
-    sta page1+1 ; +1 just gets the address of the byte one after the world var
+    ; Initialize world to point to world data
+    LDA #<WorldData
+    STA world
+    LDA #>WorldData
+    STA world+1
 
     ; setup address in PPU for nametable data
-    bit $2002
-    lda #$20 ; 2000 is the first top left nametable
-    sta $2006
-    lda #$00
-    sta $2006
+    BIT $2002
+    LDA #$20
+    STA $2006
+    LDA #$00
+    STA $2006
 
+    LDX #$00
+    LDY #$00
+LoadWorld:
+    LDA (world), Y
+    STA $2007
+    INY
+    CPX #$03
+    BNE :+
+    CPY #$C0
+    BEQ DoneLoadingWorld
+:
+    CPY #$00
+    BNE LoadWorld
+    INX
+    INC world+1
+    JMP LoadWorld
 
-    ldx #$00
-    ldy #$00
-  ;this is like a double for loop. X is I. Y is J
-  LoadWorld: ; a screen of background tiles consists of 960 bytes. 960 in hex is 03C0.
-    lda (page1), Y
-    sta $2007
-    iny
-    cpx #$07
-    bne :+
-    cpy #$80
-    beq WorldLoadingFinished
-  :
-    cpy #$00 ; y will be 0 after it has gone past 255 or FF in hex
-    bne LoadWorld
-    inx
-    inc page1+1
-    jmp LoadWorld
+DoneLoadingWorld:
+    LDX #$00
 
-  WorldLoadingFinished:
-    ldx #$00
-    lda #<chunk1page2 ; < gets the lo byte
-    sta page2
-    lda #>chunk1page2 ; > gets the hi byte
-    sta page2+1 ; +1 just gets the address of the byte one after the world var
+SetAttributes:
+    LDA #$55
+    STA $2007
+    INX
+    CPX #$40
+    BNE SetAttributes
 
-    bit $2002
-    lda #$24 ; 2400 is the first top right nametable
-    sta $2006
-    lda #$00
-    sta $2006
-  LoadWorld2: ; a screen of background tiles consists of 960 bytes. 960 in hex is 03C0.
-    lda (page2), Y
-    sta $2007
-    iny
-    cpx #$07
-    bne :+
-    cpy #$80
-    beq WorldLoadingFinished2
-  :
-    cpy #$00 ; y will be 0 after it has gone past 255 or FF in hex
-    bne LoadWorld2
-    inx
-    inc page1+1
-    jmp LoadWorld2
-
-  WorldLoadingFinished2:
-    ldx #$00
-
-  SetAttributes: ; so basically, the attribute table is a table that divides the screen into 64 sections (64 bytes) so you can give attributes to these sections on the background like color pallette and stuff
-    lda #$55 ; this is palette. Dont worry how this works
-    sta $2007 ; stores into nametable
-    inx
-    ;cpx #$40 ; 64 in hex
-    cpx #$80
-    bne SetAttributes
-
-    ldx #$00
-    ldy #$00
+    LDX #$00
+    LDY #$00 
   LoadSprites: ; for loop that loops through sprite data and places it in our previously set sprite data address
     lda SpriteData, X
     sta $0200, X ; Stores the sprite byte offsetted by X into our previously set sprite address also offsetted by X
@@ -181,16 +148,9 @@
     jmp Loop
 
   NMI: ; occurs in between the drawing of frames.
-    ldx marioX ; gets the value before adding the speed
-    lda #02
-    adc marioX
-    sta marioX
-    cpx marioX
-    bcc :+; no rollover
-    lda $2000
-    eor #%00000001 ; flip bit to switch nametables
-    sta $2000
-    :
+      lda #$02
+      adc marioX
+      sta marioX
       lda marioX
       sta $2005
       lda #$00
@@ -203,10 +163,8 @@
     .byte $22,$29,$1A,$0F,$22,$36,$17,$0f,$22,$30,$21,$0f,$22,$27,$17,$0F  ;background palette data
     .byte $22,$16,$27,$18,$22,$1A,$30,$27,$22,$16,$30,$27,$22,$0F,$36,$17  ;sprite palette data
 
-  chunk1page1:
+  WorldData:
     .incbin "testlevel.nam"
-  chunk1page2:
-    .incbin "testlevel2.nam"
 
   SpriteData:
     .byte $08, $00, $00, $08 ; Ypos, Tile, Attributes, Xpos
