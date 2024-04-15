@@ -4,7 +4,7 @@
   .byte $1A
   .byte $02 ; 2 16kb PRG ROM chips
   .byte $01 ; 1 8kb CHR ROM chip
-  .byte %00000000 ; mapper and mirroring
+  .byte %00000001 ; mapper and mirroring
   .byte $00
   .byte $00
   .byte $00
@@ -13,7 +13,9 @@
 
 .segment "ZEROPAGE" ; LSB 0 - FF
 
-  marioX .set $00
+  scrollX_LO: .res 1
+  scrollX_HI: .res 1
+  PPUCTRL_STATE: .res 1
   world: .res 2
 
 .segment "STARTUP"
@@ -34,6 +36,7 @@
 
     ; Zero out PPU registers se we don't see random graphics when we load the program
     stx $2000 ; PPU control address
+    stx PPUCTRL_STATE
     stx $2001 ; PPU mask address. Stores whether background and sprites are enabled and some other options like that, fam.
 
     stx $4010 ; This also disables sounds and shiz.
@@ -129,7 +132,7 @@ SetAttributes:
 
     LDX #$00
     LDY #$00 
-  LoadSprites: ; for loop that loops through sprite data and places it in our previously set sprite data address
+LoadSprites: ; for loop that loops through sprite data and places it in our previously set sprite data address
     lda SpriteData, X
     sta $0200, X ; Stores the sprite byte offsetted by X into our previously set sprite address also offsetted by X
     inx
@@ -140,24 +143,41 @@ SetAttributes:
 
     lda #%10010000 ; tells ppu that we want to be interrupted for NMI and that we want to use tileset 2 for background tiles instead of tileset1
     sta $2000 ; store in ppu control reg
+    sta PPUCTRL_STATE
     lda #%00011110 ; tells ppu that we want to enable rendering for first leftmost 8px for sprites and background and to enable rendering of sprites and background in general
     sta $2001
 
+    clc
 
   Loop: ; looping so we don't run the NMI code when there isn't an NMI, pluh. THIS IS NOT A GAMELOOP!!!!!
     jmp Loop
 
   NMI: ; occurs in between the drawing of frames.
-      lda #$02
-      adc marioX
-      sta marioX
-      lda marioX
-      sta $2005
-      lda #$00
-      sta $2005
-      lda #$02
-      sta $4014 ; tell ppu where to find sprite data (we have to do this every frame)
-      rti ;  RTS but for interrupts because it needs to be a different thing for some reason.
+    jsr Scroll
+    lda #$02
+    sta $4014 ; tell ppu where to find sprite data (we have to do this every frame)
+    rti
+  
+  Scroll:
+    clc
+    lda scrollX_LO
+    adc #$03
+    sta scrollX_LO
+
+    sta $2005
+    lda #$00
+    sta $2005
+
+    lda scrollX_HI
+    adc #$00 ; adding with carry will also add the carry ontop, making this value a 1 if an overflow happened in the last addition
+    sta scrollX_HI
+
+    and #%00000001
+    ora PPUCTRL_STATE
+
+    sta $2000
+    rts
+    
   
   PaletteData:
     .byte $22,$29,$1A,$0F,$22,$36,$17,$0f,$22,$30,$21,$0f,$22,$27,$17,$0F  ;background palette data
