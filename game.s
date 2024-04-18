@@ -1,10 +1,3 @@
-.struct Ball
-  xpos .byte
-  ypos .byte
-  xvel .byte
-  yvel .byte
-.endstruct
-
 .segment "HEADER"
 
   .byte "NES"
@@ -76,87 +69,41 @@
     sta $4014 ; OAM DMA Register. Tells the OAM where our sprite data is or some shiz not entirely sure.
     nop ; PPU needs some time, so give it some time with the new No Operation instruction!
 
-    ; tell PPU that we want to write to address $3F00. $3F00 is the starting address for palette information in PPU memory
+.segment "CODE"
+
+  .include "lib/ppu.s"
+
+  maxBalls = 16
+  ballX: .res maxBalls
+  ballY: .res maxBalls
+
+  LoadPalettes:
     lda #$3F
-    sta $2006 ; this is the PPU address register. It allows us to communicate with the PPU from the CPU.
+    sta $2006
     lda #$00
     sta $2006
-
     ldx #$00
+    :
+      lda PaletteData, X
+      sta PPU_DATA
+      inx
+      cpx .sizeof(PaletteData)
+      bne :-
 
-.segment "CODE"
-   
-   .define MAX_BALLS, 10
-  
-  LoadPalettes: ; for loop that loops through palette data and places it in ppu memory
-    lda PaletteData, X
-    sta $2007 ; while $2006 is for the read/write location, $2007 is for the actual read write data. They are like 2 peas in a pod!
-    ; the ppu also automatically increments the address we are writing at each time we write a byte. This is very nifty indeed. Finally, the machine does something for me.
-    inx
-    cpx #$20 ; 20 in hex is 32 in decimal. We are loading 32 bytes of palette data in this case.
-    bne LoadPalettes
-
-  WorldLoadingFinished:
-    ldx #$00
-
-  SetAttributes: ; so basically, the attribute table is a table that divides the screen into 64 sections (64 bytes) so you can give attributes to these sections on the background like color pallette and stuff
-    lda #$55 ; this is palette. Dont worry how this works
-    sta $2007 ; stores into nametable
-    inx
-    cpx #$40 ; 64 in hex
-    ;cpx #$80
-    bne SetAttributes
-
-    ldx #$00
-    ldy #$00
-  LoadSprites: ; for loop that loops through sprite data and places it in our previously set sprite data address
-    lda SpriteData, X
-    sta $0200, X ; Stores the sprite byte offsetted by X into our previously set sprite address also offsetted by X
-    inx
-    cpx #$20
-    bne LoadSprites
-
-    cli ; Turn interrupts back on (because we had them off before for initialization purposes)
-
-    lda #%10010000 ; tells ppu that we want to be interrupted for NMI and that we want to use tileset 2 for background tiles instead of tileset1
-    sta $2000 ; store in ppu control reg
-    lda #%00011110 ; tells ppu that we want to enable rendering for first leftmost 8px for sprites and background and to enable rendering of sprites and background in general
-    sta $2001
 
   Loop: ; looping so we don't run the NMI code when there isn't an NMI, pluh. THIS IS NOT A GAMELOOP!!!!!
     jmp Loop
 
   NMI: ; occurs in between the drawing of frames.
-    jsr UpdateBalls
     lda #$02
     sta $4014 ; tell ppu where to find sprite data (we have to do this every frame)
     rti ;  RTS but for interrupts because it needs to be a different thing for some reason.
-
-  UpdateBalls:
-    ldx #$00
-  update_loop:
-    lda Balls, x    ; Load PositionX
-    clc
-    adc Balls+2, x ; Add VelocityX
-    sta Balls, x   ; Store updated PositionX
-    lda Balls+1, x  ; Load PositionY
-    clc
-    adc Balls+3, x ; Add VelocityY
-    sta Balls+1, x ; Store updated PositionY
-    ; Update other properties as needed
-    inx
-    cpx #MAX_BALLS
-    bne update_loop
-    rts
-    
-  Balls:
-    .res MAX_BALLS * .sizeof(Ball)
 
   PaletteData:
     .byte $22,$29,$1A,$0F,$22,$36,$17,$0f,$22,$30,$21,$0f,$22,$27,$17,$0F  ;background palette data
     .byte $22,$16,$27,$18,$22,$1A,$30,$27,$22,$16,$30,$27,$22,$0F,$36,$17  ;sprite palette data
 
-  SpriteData:
+  BallSprite:
     .byte $08, $00, $00, $08 ; Ypos, Tile, Attributes, Xpos
 
 .segment "VECTORS" ; for interrupt handlers and shiz

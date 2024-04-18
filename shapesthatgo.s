@@ -26,7 +26,6 @@
 
 .proc nmi
     jsr render_loop
-    
 
 .proc reset
   sei
@@ -79,3 +78,4 @@
 .endproc
 
 .proc main
+  jsr init_game
