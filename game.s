@@ -11,8 +11,6 @@
   .byte $00
   .byte $00, $00, $00, $00, $00 ; filler bytes
 
-.segment "ZEROPAGE" ; LSB 0 - FF
-
 .segment "STARTUP"
 
   Reset:
@@ -69,27 +67,42 @@
     sta $4014 ; OAM DMA Register. Tells the OAM where our sprite data is or some shiz not entirely sure.
     nop ; PPU needs some time, so give it some time with the new No Operation instruction!
 
+.segment "ZEROPAGE" ; LSB 0 - FF
+
+  Ball: .res 1
+
+.segment "DATA"
+
+  MaxBalls = 16
+
+  BallPosX: .res MaxBalls, $00
+  BallPosY: .res MaxBalls, $00
+
 .segment "CODE"
 
-  .include "lib/ppu.s"
-
-  maxBalls = 16
-  ballX: .res maxBalls
-  ballY: .res maxBalls
+  ;.include "lib/ppu.s"
 
   LoadPalettes:
+    lda $2002 ; reset hatch or smth
     lda #$3F
     sta $2006
     lda #$00
     sta $2006
     ldx #$00
     :
-      lda PaletteData, X
-      sta PPU_DATA
+      lda background_palette, X
+      sta $2007
       inx
-      cpx .sizeof(PaletteData)
+      cpx #$10
       bne :-
 
+    ldx #$00
+  LoadSprite:
+    lda BallSprite, X
+    sta $0200, X
+    inx
+    cpx #$04
+    bne LoadSprite
 
   Loop: ; looping so we don't run the NMI code when there isn't an NMI, pluh. THIS IS NOT A GAMELOOP!!!!!
     jmp Loop
@@ -99,12 +112,14 @@
     sta $4014 ; tell ppu where to find sprite data (we have to do this every frame)
     rti ;  RTS but for interrupts because it needs to be a different thing for some reason.
 
-  PaletteData:
-    .byte $22,$29,$1A,$0F,$22,$36,$17,$0f,$22,$30,$21,$0f,$22,$27,$17,$0F  ;background palette data
-    .byte $22,$16,$27,$18,$22,$1A,$30,$27,$22,$16,$30,$27,$22,$0F,$36,$17  ;sprite palette data
+  background_palette:
+  .byte $22,$29,$1A,$0F	;background palette 1
+  .byte $22,$36,$17,$0F	;background palette 2
+  .byte $22,$30,$21,$0F	;background palette 3
+  .byte $22,$27,$17,$0F	;background palette 4
 
   BallSprite:
-    .byte $08, $00, $00, $08 ; Ypos, Tile, Attributes, Xpos
+    .byte $08, $75, $00, $08 ; Ypos, Tile, Attributes, Xpos
 
 .segment "VECTORS" ; for interrupt handlers and shiz
   .word NMI
