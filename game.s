@@ -67,20 +67,33 @@
     sta $4014 ; OAM DMA Register. Tells the OAM where our sprite data is or some shiz not entirely sure.
     nop ; PPU needs some time, so give it some time with the new No Operation instruction!
 
-.segment "ZEROPAGE" ; LSB 0 - FF
+    lda #%10010000 ; tells ppu that we want to be interrupted for NMI and that we want to use tileset 2 for background tiles instead of tileset1
+    sta $2000 ; store in ppu control reg
+    lda #%00011110 ; tells ppu that we want to enable rendering for first leftmost 8px for sprites and background and to enable rendering of sprites and background in general
+    sta $2001
 
-  Ball: .res 1
+.segment "ZEROPAGE" ; LSB 0 - FF
 
 .segment "DATA"
 
   MaxBalls = 16
 
-  BallPosX: .res MaxBalls, $00
-  BallPosY: .res MaxBalls, $00
+  Ball: .res 1
+  ballX: .res 1, $08
+  ballY: .res 1, $08
+  ballXSpd: .res 1, $02
+  ballYSpd: .res 1, $01
+  ballXDir: .res 1, $00
+  ballYDir: .res 1, $00
+
+  ; BallPosX: .res MaxBalls, $00
+  ; BallPosY: .res MaxBalls, $00
 
 .segment "CODE"
 
   ;.include "lib/ppu.s"
+
+  ;fortnite
 
   LoadPalettes:
     lda $2002 ; reset hatch or smth
@@ -97,7 +110,7 @@
       bne :-
 
     ldx #$00
-  LoadSprite:
+   LoadSprite:
     lda BallSprite, X
     sta $0200, X
     inx
@@ -108,15 +121,81 @@
     jmp Loop
 
   NMI: ; occurs in between the drawing of frames.
+    pha
+    inc ballX
+    inc ballY
+    jsr moveBallX
+    ;jsr bounceBallX
+    jsr moveBallY
+    ;jsr bounceBallY
+
+
     lda #$02
     sta $4014 ; tell ppu where to find sprite data (we have to do this every frame)
+
+    pla
     rti ;  RTS but for interrupts because it needs to be a different thing for some reason.
 
+  moveBallX:
+    lda ballXDir
+    cmp #$00
+    beq :+ ; direction is positive
+
+    ;direction is negative
+    dec ballX
+    jmp updateBallXPos
+    
+    : ;direction is positive
+      clc
+      sta ballX
+      adc ballXSpd
+      sta ballX
+
+    updateBallXPos:
+      lda ballX
+      sta $0203
+      rts
+  
+  moveBallY:
+    lda ballYDir
+    cmp #$00
+    beq :+ ; direction positive
+
+    ; direction is negative
+    dec ballY
+    jmp updateBallYPos
+    
+    : ; direction is positive
+      clc
+      sta ballY
+      adc ballYSpd
+      sta ballY
+
+    updateBallYPos:
+      lda ballY
+      sta $0200
+      rts
+
+  bounceBallX:
+    bcc :+
+    lda ballXDir
+    eor #$01 ; flip the direction
+    sta ballXDir
+    : ; ball has not gone off the edge of the screen
+      rts
+
+  bounceBallY:
+    bcc :+
+    lda ballYDir
+    eor #$01 ; flip the direction
+    sta ballYDir
+    : ; ball has not gone off the edge of the screen
+      rts
   background_palette:
-  .byte $22,$29,$1A,$0F	;background palette 1
-  .byte $22,$36,$17,$0F	;background palette 2
-  .byte $22,$30,$21,$0F	;background palette 3
-  .byte $22,$27,$17,$0F	;background palette 4
+  .byte $23,$29,$1A,$0F	;background palette 1
+  .byte $23,$36,$17,$0F	;background palette 2
+  .byte $23,$30,$21,$0F	;background palette 3
+  .byte $23,$27,$17,$0F	;background palette 4
 
   BallSprite:
     .byte $08, $75, $00, $08 ; Ypos, Tile, Attributes, Xpos
