@@ -1,3 +1,18 @@
+.segment "RODATA"
+
+  screenLeft = 0
+  screenRight = 255
+  screenTop = 0
+  screenBottom = 240
+
+  ballXSpd = 2
+  ballYSpd = 1
+
+  ballWidth = 40
+  ballHeight = 8
+
+  bounceMargin = 2
+
 .segment "HEADER"
 
   .byte "NES"
@@ -10,6 +25,18 @@
   .byte $00
   .byte $00
   .byte $00, $00, $00, $00, $00 ; filler bytes
+
+.segment "ZEROPAGE" ; LSB 0 - FF
+
+  Ball: .res 1
+  ballX: .res 1
+  ballY: .res 1
+  ballXDir: .res 1
+  ballYDir: .res 1
+  ballRight: .res 1
+  ballBottom: .res 1
+  flashTimer: .res 1
+  ballColor: .res 1
 
 .segment "STARTUP"
 
@@ -72,23 +99,6 @@
     lda #%00011110 ; tells ppu that we want to enable rendering for first leftmost 8px for sprites and background and to enable rendering of sprites and background in general
     sta $2001
 
-.segment "ZEROPAGE" ; LSB 0 - FF
-
-.segment "DATA"
-
-  MaxBalls = 16
-
-  Ball: .res 1
-  ballX: .res 1, $08
-  ballY: .res 1, $08
-  ballXSpd: .res 1, $02
-  ballYSpd: .res 1, $01
-  ballXDir: .res 1, $00
-  ballYDir: .res 1, $00
-
-  ; BallPosX: .res MaxBalls, $00
-  ; BallPosY: .res MaxBalls, $00
-
 .segment "CODE"
 
   ;.include "lib/ppu.s"
@@ -102,33 +112,72 @@
     lda #$00
     sta $2006
     ldx #$00
-    :
+    loadBgPalettes:
       lda background_palette, X
       sta $2007
       inx
-      cpx #$10
-      bne :-
+      cpx #16
+      bne loadBgPalettes
+      ldx #0
+    loadSpritePalettes:
+      lda sprite_palette, X
+      sta $2007
+      inx
+      cpx #16
+      bne loadSpritePalettes
 
-    ldx #$00
+    ldx #0
    LoadSprite:
     lda BallSprite, X
     sta $0200, X
     inx
-    cpx #$04
+    cpx #$14
     bne LoadSprite
 
   Loop: ; looping so we don't run the NMI code when there isn't an NMI, pluh. THIS IS NOT A GAMELOOP!!!!!
+    setBallPosOffsets:
+      clc
+      lda ballX
+      adc #ballWidth
+      sta ballRight
+      clc
+      lda ballY
+      adc #ballHeight
+      sta ballBottom
+
+    jsr wallCollisionX
+    jsr wallCollisionY
     jmp Loop
 
   NMI: ; occurs in between the drawing of frames.
     pha
-    inc ballX
-    inc ballY
-    jsr moveBallX
-    ;jsr bounceBallX
-    jsr moveBallY
-    ;jsr bounceBallY
+    clc
+    lda flashTimer
+    adc #4
+    sta flashTimer
 
+    jsr moveBallX
+    jsr moveBallY
+
+    ;ldx #$FF
+    ldx #0
+
+    UpdateBallSprite:
+      lda BallSprite, X
+      adc ballY
+      sta $0200, X
+      inx
+      inx
+      lda ballColor
+      and #%00000011
+      sta $0200, X
+      inx
+      lda BallSprite, X
+      adc ballX
+      sta $0200, X
+      inx
+      cpx #20
+      bne UpdateBallSprite
 
     lda #$02
     sta $4014 ; tell ppu where to find sprite data (we have to do this every frame)
@@ -139,16 +188,17 @@
   moveBallX:
     lda ballXDir
     cmp #$00
-    beq :+ ; direction is positive
+    beq :+
 
     ;direction is negative
-    dec ballX
+    lda ballX
+    sbc #ballXSpd
+    sta ballX
     jmp updateBallXPos
-    
     : ;direction is positive
       clc
-      sta ballX
-      adc ballXSpd
+      lda ballX
+      adc #ballXSpd
       sta ballX
 
     updateBallXPos:
@@ -162,13 +212,15 @@
     beq :+ ; direction positive
 
     ; direction is negative
-    dec ballY
+    lda ballY
+    sbc #ballYSpd
+    sta ballY
     jmp updateBallYPos
     
     : ; direction is positive
       clc
-      sta ballY
-      adc ballYSpd
+      lda ballY
+      adc #ballYSpd
       sta ballY
 
     updateBallYPos:
@@ -176,29 +228,111 @@
       sta $0200
       rts
 
-  bounceBallX:
-    bcc :+
-    lda ballXDir
-    eor #$01 ; flip the direction
-    sta ballXDir
-    : ; ball has not gone off the edge of the screen
-      rts
+  wallCollisionX:
 
-  bounceBallY:
-    bcc :+
+    clc
+
+    lda ballXDir
+    cmp #0
+    bne :+
+
+    lda ballRight
+    adc #ballXSpd
+    bcs RightEdge
+
+    :
+    lda ballXDir
+    cmp #1
+    bne :+
+
+    sec
+    lda ballX
+    sbc #ballXSpd
+    bcc LeftEdge
+
+    :
+    rts
+
+  wallCollisionY:
+
+    clc
+
     lda ballYDir
-    eor #$01 ; flip the direction
+    cmp #0
+    bne :+
+
+    lda ballBottom
+    adc #16 ; uh oh magic number. Shut up. No clue why this fixes it but it does so just shut up.
+    bcs BottomEdge
+
+    :
+    lda ballYDir
+    cmp #1
+    bne :+
+
+    sec
+    lda ballY
+    sbc #ballYSpd
+    bcc TopEdge
+
+    :
+    rts
+
+  LeftEdge:
+    clc
+    lda #screenLeft
+    sta ballX
+    lda #0
+    sta ballXDir
+    inc ballColor
+    rts
+
+  RightEdge:
+    sec
+    lda #screenRight
+    sbc #ballWidth
+    sta ballX
+    lda #1
+    sta ballXDir
+    inc ballColor
+    rts
+  TopEdge:
+    clc
+    lda #screenTop
+    sta ballY
+    lda #0
     sta ballYDir
-    : ; ball has not gone off the edge of the screen
-      rts
+    inc ballColor
+    rts
+  BottomEdge:
+    sec
+    lda #screenBottom
+    sbc #ballHeight
+    sta ballY
+    lda #1
+    sta ballYDir
+    inc ballColor
+    rts
+
   background_palette:
-  .byte $23,$29,$1A,$0F	;background palette 1
-  .byte $23,$36,$17,$0F	;background palette 2
-  .byte $23,$30,$21,$0F	;background palette 3
-  .byte $23,$27,$17,$0F	;background palette 4
+    .byte $3F,$16,$06,$15 ; background palette 1
+    .byte $3F,$36,$17,$0F ; background palette 2
+    .byte $3F,$30,$23,$0F ; background palette 3
+    .byte $3F,$27,$17,$0F ; background palette 4
+  
+  sprite_palette:
+    .byte $3F,$16,$16,$16
+    .byte $3F,$19,$19,$19
+    .byte $3F,$01,$01,$01
+    .byte $3F,$28,$28,$28
+
 
   BallSprite:
-    .byte $08, $75, $00, $08 ; Ypos, Tile, Attributes, Xpos
+    .byte $00, $0B, $01, $00 ; Ypos, Tile, Attributes, Xpos
+    .byte $00, $0A, $01, $08
+    .byte $00, $15, $01, $10
+    .byte $00, $15, $01, $18
+    .byte $00, $1C, $01, $20
 
 .segment "VECTORS" ; for interrupt handlers and shiz
   .word NMI
