@@ -1,12 +1,10 @@
 .segment "RODATA"
 
-  screenLeft = 0
-  screenRight = 255
-  screenTop = 8
-  screenBottom = 240
+  screenWidth = 255
+  screenHeight = 230
 
   ballXSpd = 4
-  ballYSpd = 1
+  ballYSpd = 3
 
   ballWidth = 40
   ballHeight = 8
@@ -161,6 +159,7 @@
     ldx #0
 
     UpdateBallSprite:
+      clc
       lda BallSprite, X
       adc ballY
       sta $0200, X
@@ -231,42 +230,47 @@
     lda ballXDir
     cmp #0
     bne :+
-    lda #$69
-    sta flashTimer
 
+    ; test right edge
     lda ballRight
-    adc ballXSpd
-    sec
-    cmp #screenRight ; check if the next move is not past the right wall
-    bcc @done ; get outta here brev
+    cmp #screenWidth ; check if its equal just to make sure
+    beq RightEdge
     
-    
+    adc #ballXSpd ;  get next ball position
+    bcs RightEdge
+
 
     :
     lda ballXDir
     cmp #1
     bne @done
-    lda #$89
-    sta flashTimer
 
+    ;testing left edge
     lda ballX
+    cmp #0
+    beq LeftEdge
+
     sec
-    cmp #screenRight
-    ;bcs LeftEdge
+    sbc #ballXSpd ;  get next ball position
+    bcc LeftEdge
 
     @done:
     rts
 
   wallCollisionY:
 
-    clc
-
     lda ballYDir
     cmp #0
     bne :+
 
+    ; test bottom edge
     lda ballBottom
-    adc #ballHeight
+    cmp #screenHeight ; check if its equal just to make sure
+    beq BottomEdge
+
+    
+    sec
+    cmp #screenHeight ; I really hate how the NES verticle resolution is 240. It would make everything so much better if it was 256.
     bcs BottomEdge
 
     :
@@ -274,16 +278,22 @@
     cmp #1
     bne @done
 
-    sec
+    ;testing top edge
     lda ballY
-    sbc #ballYSpd
+    cmp #8
+    beq TopEdge
+
+    sbc #ballYSpd ;  get next ball position
+    sec
+    cmp #8
     bcc TopEdge
+
 
     @done:
     rts
 
   LeftEdge:
-    lda #screenLeft
+    lda #0
     sta ballX
     lda #0
     sta ballXDir
@@ -291,7 +301,7 @@
     rts
 
   RightEdge:
-    lda #screenRight
+    lda #screenWidth
     sbc #ballWidth
     sta ballX
     lda #1
@@ -299,14 +309,14 @@
     inc ballColor
     rts
   TopEdge:
-    lda #screenTop
+    lda #8
     sta ballY
     lda #0
     sta ballYDir
     inc ballColor
     rts
   BottomEdge:
-    lda #screenBottom
+    lda #screenHeight
     sbc #ballHeight
     sta ballY
     lda #1
