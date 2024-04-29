@@ -2,16 +2,14 @@
 
   screenLeft = 0
   screenRight = 255
-  screenTop = 0
+  screenTop = 8
   screenBottom = 240
 
-  ballXSpd = 2
+  ballXSpd = 4
   ballYSpd = 1
 
   ballWidth = 40
   ballHeight = 8
-
-  bounceMargin = 2
 
 .segment "HEADER"
 
@@ -144,17 +142,17 @@
       lda ballY
       adc #ballHeight
       sta ballBottom
-
-    jsr wallCollisionX
-    jsr wallCollisionY
     jmp Loop
 
   NMI: ; occurs in between the drawing of frames.
     pha
     clc
-    lda flashTimer
-    adc #4
-    sta flashTimer
+    ;lda flashTimer
+    ;adc #4
+    ;sta flashTimer
+
+    jsr wallCollisionX
+    jsr wallCollisionY
 
     jsr moveBallX
     jsr moveBallY
@@ -230,27 +228,33 @@
 
   wallCollisionX:
 
-    clc
-
     lda ballXDir
     cmp #0
     bne :+
+    lda #$69
+    sta flashTimer
 
     lda ballRight
-    adc #ballXSpd
-    bcs RightEdge
+    adc ballXSpd
+    sec
+    cmp #screenRight ; check if the next move is not past the right wall
+    bcc @done ; get outta here brev
+    
+    
 
     :
     lda ballXDir
     cmp #1
-    bne :+
+    bne @done
+    lda #$89
+    sta flashTimer
 
-    sec
     lda ballX
-    sbc #ballXSpd
-    bcc LeftEdge
+    sec
+    cmp #screenRight
+    ;bcs LeftEdge
 
-    :
+    @done:
     rts
 
   wallCollisionY:
@@ -262,24 +266,23 @@
     bne :+
 
     lda ballBottom
-    adc #16 ; uh oh magic number. Shut up. No clue why this fixes it but it does so just shut up.
+    adc #ballHeight
     bcs BottomEdge
 
     :
     lda ballYDir
     cmp #1
-    bne :+
+    bne @done
 
     sec
     lda ballY
     sbc #ballYSpd
     bcc TopEdge
 
-    :
+    @done:
     rts
 
   LeftEdge:
-    clc
     lda #screenLeft
     sta ballX
     lda #0
@@ -288,7 +291,6 @@
     rts
 
   RightEdge:
-    sec
     lda #screenRight
     sbc #ballWidth
     sta ballX
@@ -297,7 +299,6 @@
     inc ballColor
     rts
   TopEdge:
-    clc
     lda #screenTop
     sta ballY
     lda #0
@@ -305,7 +306,6 @@
     inc ballColor
     rts
   BottomEdge:
-    sec
     lda #screenBottom
     sbc #ballHeight
     sta ballY

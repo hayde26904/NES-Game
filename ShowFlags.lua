@@ -1,24 +1,17 @@
-﻿local function drawFlags()
-    local flags = {
-        C = (cpu.getRegister("P") & 1) == 1 and 1 or 0,
-        Z = (cpu.getRegister("P") & 2) == 2 and 1 or 0,
-        I = (cpu.getRegister("P") & 4) == 4 and 1 or 0,
-        D = (cpu.getRegister("P") & 8) == 8 and 1 or 0,
-        B = (cpu.getRegister("P") & 16) == 16 and 1 or 0,
-        V = (cpu.getRegister("P") & 64) == 64 and 1 or 0,
-        N = (cpu.getRegister("P") & 128) == 128 and 1 or 0
-    }
+﻿-- Define a function to update and display the carry flag value
+function updateCarryFlag()
+    -- Read the carry flag from the CPU status register (P register)
+    local carryFlag = memory.readbyte(0x6000) -- Assuming NES CPU status register address
     
-    gui.drawText(10, 10, "C: " .. flags.C, 0xFFFFFFFF, 0x000000FF)
-    gui.drawText(50, 10, "Z: " .. flags.Z, 0xFFFFFFFF, 0x000000FF)
-    gui.drawText(90, 10, "I: " .. flags.I, 0xFFFFFFFF, 0x000000FF)
-    gui.drawText(10, 30, "D: " .. flags.D, 0xFFFFFFFF, 0x000000FF)
-    gui.drawText(50, 30, "B: " .. flags.B, 0xFFFFFFFF, 0x000000FF)
-    gui.drawText(90, 30, "V: " .. flags.V, 0xFFFFFFFF, 0x000000FF)
-    gui.drawText(130, 30, "N: " .. flags.N, 0xFFFFFFFF, 0x000000FF)
+    -- Display the carry flag value
+    gui.text(10, 10, "Carry Flag: " .. carryFlag)
 end
 
+-- Main loop
 while true do
-    drawFlags()
+    -- Update and display the carry flag value
+    updateCarryFlag()
+    
+    -- Emulate a delay to control the refresh rate of the display
     emu.frameadvance()
 end
