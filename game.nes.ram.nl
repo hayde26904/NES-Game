@@ -1,9 +1,0 @@
-$0002#Ball#
-$0003#ballX#
-$0004#ballY#
-$0005#ballXDir#
-$0006#ballYDir#
-$0007#ballRight#
-$0008#ballBottom#
-$0009#flashTimer#
-$000A#ballColor#
