@@ -3,8 +3,8 @@
   screenWidth = 255
   screenHeight = 230
 
-  ballXSpd = 4
-  ballYSpd = 3
+  ballXSpd = 2
+  ballYSpd = 1
 
   ballWidth = 40
   ballHeight = 8
