@@ -130,7 +130,7 @@
     cpx #$14
     bne LoadSprite
 
-  Loop: ; looping so we don't run the NMI code when there isn't an NMI, pluh. THIS IS NOT A GAMELOOP!!!!!
+  Loop: ; looping so we don't run the NMI code when there isn't an NMI, pluh.
     setBallPosOffsets:
       clc
       lda ballX
