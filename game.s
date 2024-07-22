@@ -34,7 +34,16 @@
   flashTimer: .res 1
   ballColor: .res 1
 
-.segment "STARTUP"
+.segment "DATA"
+
+.segment "CODE"
+
+  .include "lib/famistudio_ca65.s"
+
+  BeatItData:
+    .include "beatit.s"
+
+  ;fortnite
 
   Reset:
 
@@ -95,12 +104,6 @@
     lda #%00011110 ; tells ppu that we want to enable rendering for first leftmost 8px for sprites and background and to enable rendering of sprites and background in general
     sta $2001
 
-.segment "CODE"
-
-  ;.include "lib/ppu.s"
-
-  ;fortnite
-
   LoadPalettes:
     lda $2002 ; reset hatch or smth
     lda #$3F
@@ -129,6 +132,14 @@
     inx
     cpx #$14
     bne LoadSprite
+
+  PlaySong:
+    ldx #.lobyte(BeatItData)
+    ldy #.hibyte(BeatItData)
+    lda #1
+    jsr famistudio_init
+    lda #0
+    jsr famistudio_music_play
 
   Loop: ; looping so we don't run the NMI code when there isn't an NMI, pluh.
     setBallPosOffsets:
@@ -178,6 +189,8 @@
 
     lda #$02
     sta $4014 ; tell ppu where to find sprite data (we have to do this every frame)
+
+    jsr famistudio_update
 
     pla
     rti ;  RTS but for interrupts because it needs to be a different thing for some reason.
@@ -347,7 +360,6 @@
 .segment "VECTORS" ; for interrupt handlers and shiz
   .word NMI
   .word Reset
-  ;
 
 .segment "CHARS"
   .incbin "mario.chr"
