@@ -9,6 +9,8 @@
   ballWidth = 40
   ballHeight = 8
 
+  defaultPalette = $01
+
 .segment "HEADER"
 
   .byte "NES"
@@ -310,7 +312,6 @@
     sta ballX
     lda #0
     sta ballXDir
-    inc ballColor
     rts
 
   RightEdge:
@@ -319,14 +320,12 @@
     sta ballX
     lda #1
     sta ballXDir
-    inc ballColor
     rts
   TopEdge:
     lda #8
     sta ballY
     lda #0
     sta ballYDir
-    inc ballColor
     rts
   BottomEdge:
     lda #screenHeight
@@ -334,7 +333,6 @@
     sta ballY
     lda #1
     sta ballYDir
-    inc ballColor
     rts
 
   background_palette:
@@ -344,18 +342,22 @@
     .byte $3F,$27,$17,$0F ; background palette 4
   
   sprite_palette:
-    .byte $3F,$16,$16,$16
+    .byte $3F,$05,$36,$11
     .byte $3F,$19,$19,$19
     .byte $3F,$01,$01,$01
     .byte $3F,$28,$28,$28
 
 
   BallSprite:
-    .byte $00, $0B, $01, $00 ; Ypos, Tile, Attributes, Xpos
-    .byte $00, $0A, $01, $08
-    .byte $00, $15, $01, $10
-    .byte $00, $15, $01, $18
-    .byte $00, $1C, $01, $20
+    ;.byte $00, $0B, $01, $00 ; Ypos, Tile, Attributes, Xpos
+    ;.byte $00, $0A, $01, $08
+    ;.byte $00, $15, $01, $10
+    ;.byte $00, $15, $01, $18
+    ;.byte $00, $1C, $01, $20
+    .byte $00, $32, defaultPalette, $00
+    .byte $00, $33, defaultPalette, $08
+    .byte $08, $42, defaultPalette, $00
+    .byte $08, $43, defaultPalette, $08
 
 .segment "VECTORS" ; for interrupt handlers and shiz
   .word NMI
