@@ -72,6 +72,7 @@ PPU_STATUS = $2002
 OAM_ADDR  = $2003
 OAM_DATA	= $2004
 OAM_DMA   = $4014
+OAM_INDEX = 0
 
 ; - Byte 0 (Y Position)
 OAM_Y    = 0
@@ -179,6 +180,71 @@ PALETTE     = $3f00
   cpx #$20
   bne :-
 .endmacro
+
+.macro LoadMetaSprite address, size, return_address
+  ldx #0
+  ldy OAM_INDEX
+: 
+  lda address, X
+  sta $0200, Y ; store at the next available sprite position
+  iny
+  inx
+  inc OAM_INDEX
+  txa
+  cmp size
+  bne :-
+
+  .if (.not .blank(return_address))
+    sec
+    lda OAM_INDEX
+    sbc size
+    sta return_address
+  .endif
+
+.endmacro
+
+.macro SetMetaSpritePosition index, address, size, xpos, ypos
+  ldx index
+  ldy #0 ; the current byte of the sprite (0-3)
+:
+  tya
+  bne :+ ; if we are in byte 0 (ypos of the sprite), set ypos, else, branch past
+  lda ypos
+  clc
+  adc address, X ; add to original value
+  sta $0200, X
+:
+
+  cpy #3 ; xpos of sprite
+  bne :+
+  txa
+  pha ; need to put x on the stack because we need to alter it real quick
+  clc
+  adc #3
+  lda xpos
+  clc
+  adc address, X ; add to original value
+  sta $0200, X
+  pla
+  tax ; OG x is back
+:
+  inx
+  iny
+  sec
+  cpy #4 ; if we have moved onto a new sprite , reset the current byte value to 0
+  bne :+
+  ldy #0
+:
+  txa
+  sec
+  sbc index ; subtract the OG index from the current index
+  sec
+  cmp size ; if it's greater than size, we have done the whole sprite, if not, continue looping
+  bcc :---- ; I'm really sorry for all these anonymous labels, but on the bright side, it kinda looks like a penis.
+
+.endmacro
+
+
 
 .macro Sprite0ClearWait
 : bit PPU_STATUS

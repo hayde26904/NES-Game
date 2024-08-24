@@ -4,6 +4,8 @@ mario:
     .byte $08, $42, $00, $00
     .byte $08, $43, $00, $08
 
+mario_size = 16
+
 balls:
     .byte $00, $0B, $01, $00 ; Ypos, Tile, Attributes, Xpos
     .byte $00, $0A, $01, $08
