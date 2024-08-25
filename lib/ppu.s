@@ -72,7 +72,6 @@ PPU_STATUS = $2002
 OAM_ADDR  = $2003
 OAM_DATA	= $2004
 OAM_DMA   = $4014
-OAM_INDEX = 0
 
 ; - Byte 0 (Y Position)
 OAM_Y    = 0
@@ -181,25 +180,17 @@ PALETTE     = $3f00
   bne :-
 .endmacro
 
-.macro LoadMetaSprite address, size, return_address
+.macro LoadMetaSprite address, size, index
   ldx #0
-  ldy OAM_INDEX
+  ldy index
 : 
   lda address, X
-  sta $0200, Y ; store at the next available sprite position
+  sta $0200, Y
   iny
   inx
-  inc OAM_INDEX
   txa
   cmp size
   bne :-
-
-  .if (.not .blank(return_address))
-    sec
-    lda OAM_INDEX
-    sbc size
-    sta return_address
-  .endif
 
 .endmacro
 
@@ -209,24 +200,38 @@ PALETTE     = $3f00
 :
   tya
   bne :+ ; if we are in byte 0 (ypos of the sprite), set ypos, else, branch past
+  pha ; push y to the stack before we use it for scratch data
+  txa
+  tay ; store original value of X in Y so we can overwrite x and still index by the original value of X
+  sec
+  sbc index ; subtract the original index so we can use it to index into the sprite data
+  tax
   lda ypos
   clc
   adc address, X ; add to original value
-  sta $0200, X
+  sta $0200, Y ; this is really just indexing by the original value of X
+  tya
+  tax ; put everything back
+  pla
+  tay ; OG y is back
 :
-
   cpy #3 ; xpos of sprite
   bne :+
+  tya
+  pha ; push y to the stack before we use it for scratch data
   txa
-  pha ; need to put x on the stack because we need to alter it real quick
-  clc
-  adc #3
+  tay ; store original value of X in Y so we can overwrite x and still index by the original value of X
+  sec
+  sbc index ; subtract the original index so we can use it to index into the sprite data
+  tax
   lda xpos
   clc
   adc address, X ; add to original value
-  sta $0200, X
+  sta $0200, Y ; this is really just indexing by the original value of X
+  tya
+  tax ; put everything back
   pla
-  tax ; OG x is back
+  tay ; OG y is back
 :
   inx
   iny
@@ -239,12 +244,16 @@ PALETTE     = $3f00
   sec
   sbc index ; subtract the OG index from the current index
   sec
-  cmp size ; if it's greater than size, we have done the whole sprite, if not, continue looping
-  bcc :---- ; I'm really sorry for all these anonymous labels, but on the bright side, it kinda looks like a penis.
+  cmp size ; if it's equal to size, we have done the whole sprite, if not, continue looping
+  bne :---- ; I'm really sorry for all these anonymous labels, but on the bright side, it kinda looks like a penis.
 
 .endmacro
 
-
+.macro AnimateMetaSprite sprite_index, anim_address, anim_size, frame
+  ldx sprite_index
+  ldy #0 ; the current byte of the sprite
+.endmacro
+  
 
 .macro Sprite0ClearWait
 : bit PPU_STATUS

@@ -14,10 +14,12 @@
 
 .segment "RODATA"
   .include "sprites.s"
+  .include "anims.s"
 
 .segment "DATA"
     MAX_MARIO = 64
-
+    MARIO_SPRITE_INDEX = 16
+    MARIO_ANIM_SPEED = 240 ;0 - 255
 
 .segment "BSS"
     marioXPos: .res MAX_MARIO
@@ -25,10 +27,10 @@
 
 .segment "ZEROPAGE" ; LSB 0 - FF
 
-  mario_index: .res 1
-
   mx: .res 1
   my: .res 1
+  mario_anim_frame: .res 1
+  mario_anim_countdown: .res 1
 
 .segment "CODE"
 
@@ -38,9 +40,13 @@
   ; todo
   ; look into using structs to store all info about a sprite.
 
-  LoadMetaSprite mario, #mario_size, mario_index
+  lda #30
+  sta mx
+  lda #100
+  sta my
 
-  LoadMetaSprite balls, #20
+  LoadMetaSprite mario, #mario_size, #MARIO_SPRITE_INDEX
+  SetMetaSpritePosition #MARIO_SPRITE_INDEX, mario, #mario_size, mx, my
 
   inf_loop:
     jmp inf_loop
@@ -49,14 +55,34 @@
   NMI:
 
     inc mx
-    inc my
-    SetMetaSpritePosition mario_index, mario, #mario_size, mx, my
+    SetMetaSpritePosition #MARIO_SPRITE_INDEX, mario, #mario_size, mx, my
+
+    jsr animate_mario
 
     lda #$00
     sta OAM_ADDR
     lda #$02
     sta OAM_DMA
     rti
+
+  animate_mario:
+    lda #MARIO_ANIM_SPEED
+    beq @done
+    dec mario_anim_countdown
+    cmp mario_anim_countdown
+    beq @anim_time
+    rts
+    @anim_time:
+    inc mario_anim_frame
+    lda mario_anim_frame
+    cmp #4
+    bne :+
+    lda #0 ;loop anim frame back to 0
+    sta mario_anim_frame
+    :
+    AnimateMetaSprite #MARIO_SPRITE_INDEX, mario_walk, #12, mario_anim_frame
+    @done:
+    rts
 
 .segment "VECTORS" ; for interrupt handlers and shiz
   .word NMI
