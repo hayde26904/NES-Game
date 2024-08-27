@@ -18,8 +18,8 @@
 
 .segment "DATA"
     MAX_MARIO = 64
-    MARIO_SPRITE_INDEX = 16
-    MARIO_ANIM_SPEED = 240 ;0 - 255
+    MARIO_SPRITE_INDEX = 0
+    MARIO_ANIM_SPEED = 250 ;0 - 255
 
 .segment "BSS"
     marioXPos: .res MAX_MARIO
@@ -35,6 +35,7 @@
 .segment "CODE"
 
   .include "lib/ppu.s"
+  .include "lib/util.s"
   .include "resetroutine.s"
 
   ; todo
@@ -73,6 +74,8 @@
     beq @anim_time
     rts
     @anim_time:
+    lda #$FF
+    sta mario_anim_countdown
     inc mario_anim_frame
     lda mario_anim_frame
     cmp #4
@@ -80,7 +83,17 @@
     lda #0 ;loop anim frame back to 0
     sta mario_anim_frame
     :
-    AnimateMetaSprite #MARIO_SPRITE_INDEX, mario_walk, #12, mario_anim_frame
+
+    pha ; push original, not multiplied anim frame to stack for later
+    multiply mario_anim_frame, #4
+    clc
+    adc mario_anim_frame
+    sta mario_anim_frame
+
+    AnimateMetaSprite #MARIO_SPRITE_INDEX, #mario_size, mario_walk, mario_anim_frame
+
+    pla
+    sta mario_anim_frame
     @done:
     rts
 

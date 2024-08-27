@@ -249,9 +249,42 @@ PALETTE     = $3f00
 
 .endmacro
 
-.macro AnimateMetaSprite sprite_index, anim_address, anim_size, frame
+.macro AnimateMetaSprite sprite_index, sprite_size, anim_address, frame_index ; frame_index should be the current frame of animation multiplied by the size of each frame in bytes
   ldx sprite_index
   ldy #0 ; the current byte of the sprite
+:
+  tya
+  sec
+  cmp #1
+  bne :+ ; at tileID position
+  tya
+  pha ; push y to the stack before we use it for scratch data
+  txa
+  tay ; store original value of X in Y so we can overwrite x and still index by the original value of X
+  sec
+  sbc sprite_index ; subtract the original sprite_index from the current index so we can use it to index the animation data
+  clc
+  adc frame_index
+  tax
+  lda anim_address, X
+  sta $0200, Y
+  tya
+  tax ; put everything back
+  pla
+  tay ; OG y is back
+: ; not at tileID position
+  inx
+  iny
+  cpy #4
+  bne :+
+  ldy #0
+:
+  txa
+  sec
+  sbc sprite_index
+  sec
+  cmp sprite_size
+  bne :---
 .endmacro
   
 
