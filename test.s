@@ -30,21 +30,38 @@
     ldx #$FF
     txs
 
+  waitVblank:
+    bit $2002
+    bpl waitVblank
+
+    lda #%10000000
+    sta $2000
+    lda #%00011110
+    sta $2001
+
   ; todo
   ; look into using structs to store all info about a sprite.
 
+  loadMarioPalette:
 
-  lda #$00
-  sta OAM_ADDR
-  lda #$02
-  sta OAM_DMA
+    lda #$3F
+    sta $2006
+    lda #$10
+    sta $2006
 
-  inf_loop:
-    jmp inf_loop
+    lda #$3F
+    sta $2007
 
-  
-  NMI:
-  ; 36 37 38 39
+    lda #$16
+    sta $2007
+
+    lda #$27
+    sta $2007
+
+    lda #$18
+    sta $2007
+
+  lodaMarioSprite:
     lda #$36
     sta $0201
     lda #$37
@@ -53,6 +70,18 @@
     sta $0209
     lda #$39
     sta $020D
+
+  lda #$00
+  sta OAM_ADDR
+  lda #$02
+  sta OAM_DMA
+
+
+  inf_loop:
+    jmp inf_loop
+
+  
+  NMI:
 
     lda mx
     sta $0203
