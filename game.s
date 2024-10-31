@@ -36,7 +36,19 @@
 
   .include "lib/ppu.s"
   .include "lib/util.s"
-  .include "resetroutine.s"
+
+  Reset:
+    ldx #$FF
+    txs
+
+  lda #%10010000
+  sta PPU_CTRL
+  lda #%00011110
+  sta PPU_MASK
+
+  waitVblank:
+    bit $2002
+    bpl waitVblank
 
   ; todo
   ; look into using structs to store all info about a sprite.

@@ -21,6 +21,12 @@
   mx: .res 1
   my: .res 1
 
+  xSpd = 2
+  ySpd = 1
+
+  dirX: .res 1
+  dirY: .res 1
+
 .segment "CODE"
 
   .include "lib/ppu.s"
@@ -140,7 +146,6 @@
     lda mx
     sta $0203
     sta $020B
-    lda mx
     clc
     adc #8
     sta $0207
@@ -149,7 +154,6 @@
     lda my
     sta $0200
     sta $0204
-    lda my
     clc
     adc #8
     sta $0208
@@ -158,6 +162,7 @@
     inc mx
     inc mx
     inc my
+
 
     lda #$00
     sta OAM_ADDR
