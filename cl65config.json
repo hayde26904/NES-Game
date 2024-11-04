@@ -1,5 +1,5 @@
 {
     "executable": "cl65",
-    "input": "test.s",
-    "params": "--verbose --target nes -o test.nes"
+    "input": "optest.s",
+    "params": "--verbose --target nes -o optest.nes"
   }
